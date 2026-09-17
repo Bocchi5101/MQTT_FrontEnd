@@ -1,0 +1,694 @@
+<!doctype html>
+<html lang="th">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>สรุปสอบ IoT และโค้ด ESP8266</title>
+<style>
+  body {
+    font-family: "Leelawadee UI", Tahoma, sans-serif;
+    color: #203044;
+    background: #edf2f5;
+    margin: 0;
+    line-height: 1.75;
+    font-size: 16px
+  }
+
+  main {
+    max-width: 940px;
+    margin: 32px auto;
+    background: white;
+    padding: 44px 54px;
+    border-radius: 12px
+  }
+
+  header {
+    border-bottom: 4px solid #087f8c;
+    margin-bottom: 24px
+  }
+
+  h1 {
+    font-size: 34px;
+    margin: 6px 0
+  }
+
+  h2 {
+    font-size: 23px;
+    color: #076571;
+    margin-top: 32px
+  }
+
+  small {
+    color: #087f8c
+  }
+
+  aside,
+  .flow {
+    padding: 16px 20px;
+    border-radius: 8px;
+    background: #eaf6f6;
+    margin: 20px 0
+  }
+
+  aside {
+    background: #fff5df;
+    border-left: 4px solid #cc921f
+  }
+
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 16px 0;
+    font-size: 15px
+  }
+
+  th,
+  td {
+    border: 1px solid #d6e2e7;
+    padding: 10px;
+    text-align: left;
+    vertical-align: top
+  }
+
+  th {
+    background: #eaf2f6
+  }
+
+  code,
+  pre {
+    font-family: Consolas, monospace;
+    font-size: 13px
+  }
+
+  code {
+    overflow-wrap: anywhere
+  }
+
+  pre {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    background: #f1f4f7;
+    padding: 16px;
+    line-height: 1.5
+  }
+
+  a {
+    color: #066d8b
+  }
+
+  li {
+    margin: 6px 0
+  }
+
+  @media(max-width:640px) {
+    main {
+      margin: 0;
+      padding: 22px 16px;
+      border-radius: 0
+    }
+
+    h1 {
+      font-size: 28px
+    }
+
+    table {
+      font-size: 12px
+    }
+
+    th,
+    td {
+      padding: 6px;
+      overflow-wrap: anywhere
+    }
+  }
+
+  @media print {
+    nav {
+      display: none
+    }
+
+    @page {
+      size: A4;
+      margin: 16mm
+    }
+
+    body {
+      background: white;
+      font-size: 11pt
+    }
+
+    main {
+      padding: 0;
+      margin: 0;
+      max-width: none
+    }
+
+    h1 {
+      font-size: 24pt
+    }
+
+    h2 {
+      font-size: 16pt;
+      break-after: avoid
+    }
+
+    table {
+      font-size: 10pt
+    }
+
+    tr {
+      break-inside: avoid
+    }
+
+    pre {
+      font-size: 9pt
+    }
+
+    header,
+    aside,
+    .flow {
+      break-inside: avoid
+    }
+
+    .newpage {
+      break-before: page
+    }
+  }
+</style>
+<main>
+  <header><small>ทบทวนสอบปฏิบัติ • IoT Lab</small>
+    <h1>ESP ↔ HiveMQ ↔ React</h1>
+    <p>สรุปจาก README และสไลด์ทั้ง 3 ไฟล์ พร้อมแนวทาง ESP8266</p>
+  </header>
+  <nav style="display:flex;gap:12px;flex-wrap:wrap;margin:20px 0"><a href="esp8266_iot_lab/esp8266_iot_lab.ino" download
+      style="padding:10px 16px;background:#087f8c;color:white;border-radius:6px;text-decoration:none">ดาวน์โหลดโค้ด
+      ESP8266</a><button onclick="window.print()"
+      style="padding:10px 16px;border:1px solid #087f8c;border-radius:6px;background:white;color:#076571;cursor:pointer;font:inherit">พิมพ์
+      / บันทึกเป็น PDF</button></nav>
+  <aside><b>อ่านก่อนใช้:</b> บอร์ดที่คุณมีคือ ESP32 แต่โค้ดท้ายเอกสารเป็นตัวอย่างสำหรับ <b>NodeMCU ESP8266 + DHT11 + LED
+      ภายนอก</b> ตามคำถามเพิ่มเติม รุ่นเซนเซอร์ของคุณยังไม่ทราบ ห้ามถือว่าเป็น DHT11 โดยอัตโนมัติ
+    ต้องตรวจรุ่นและผังขาจริงก่อนต่อวงจร โค้ดยังไม่ได้คอมไพล์ด้วย Arduino core หรือทดสอบกับฮาร์ดแวร์จริง</aside>
+  <h2>1. ผลงานที่ต้องทำให้ได้</h2>
+  <ul>
+    <li>ESP อ่านอุณหภูมิและความชื้น ส่งขึ้นเว็บทุก 5 วินาที</li>
+    <li>เว็บมีค่า Temperature, Humidity, สถานะ LED และปุ่มควบคุม</li>
+    <li>ปุ่มจริง 1 ปุ่มกดแล้ว LED สลับติด/ดับหนึ่งครั้ง</li>
+    <li>เมื่อ LED เปลี่ยนจากปุ่มจริงหรือเว็บ ESP ต้องส่งสถานะกลับ ให้เว็บตรงกับสถานะที่บอร์ดสั่ง</li>
+  </ul>
+  <div class="flow">เซนเซอร์ → ESP → HiveMQ → เว็บ<br>เว็บส่งคำสั่ง → HiveMQ → ESP เปลี่ยน LED → HiveMQ →
+    เว็บอัปเดตสถานะ<br>ปุ่มจริง → ESP เปลี่ยน LED → HiveMQ → เว็บอัปเดตสถานะ</div>
+  <p><b>จำ:</b> เว็บส่ง “คำสั่ง” แล้วรอ “สถานะจากบอร์ด” อย่าแสดงว่าไฟติดเพียงเพราะกดปุ่มสำเร็จ สถานะนี้เป็นสถานะ output
+    ที่ซอฟต์แวร์บอร์ดสั่ง ไม่ใช่เซนเซอร์ตรวจว่า LED เปล่งแสงจริง</p>
+  <h2>2. MQTT และข้อตกลงข้อมูล</h2>
+  <p>Broker = คนกลาง (HiveMQ) • Publish = ส่ง • Subscribe = สมัครรับ • Topic = ชื่อช่อง • Payload = เนื้อหา • Client ID
+    = ชื่อการเชื่อมต่อ ต้องไม่ซ้ำกับ client ที่ออนไลน์พร้อมกัน</p>
+  <table>
+    <tr>
+      <th>Topic</th>
+      <th>ผู้ส่ง → ผู้รับ</th>
+      <th>Payload</th>
+    </tr>
+    <tr>
+      <td>lab/sensor/temp</td>
+      <td>ESP → เว็บ</td>
+      <td>28.5</td>
+    </tr>
+    <tr>
+      <td>lab/sensor/humidity</td>
+      <td>ESP → เว็บ</td>
+      <td>65.0</td>
+    </tr>
+    <tr>
+      <td>lab/led/status</td>
+      <td>ESP → เว็บ</td>
+      <td>ON / OFF</td>
+    </tr>
+    <tr>
+      <td>lab/led/control</td>
+      <td>เว็บ → ESP</td>
+      <td>ON / OFF</td>
+    </tr>
+  </table>
+  <p>Topic แยกตัวพิมพ์ใหญ่/เล็ก และ slash นำหน้ามีความหมาย เช่น <code>lab/led/status</code> ไม่เท่ากับ
+    <code>/lab/led/status</code> ถ้าร่วม broker กับเพื่อน ใช้ prefix เฉพาะคนเมื่ออาจารย์อนุญาต
+    และแก้ให้ตรงกันทั้งเว็บและบอร์ด</p>
+  <ul>
+    <li><b>QoS 0:</b> ส่งได้เร็ว อาจสูญหาย ใช้ในตัวอย่างนี้</li>
+    <li><b>QoS 1:</b> รับอย่างน้อยหนึ่งครั้ง อาจซ้ำ จึงควรใช้คำสั่ง ON/OFF แทน TOGGLE</li>
+    <li><b>QoS 2:</b> ส่งมอบหนึ่งครั้งในกลไก MQTT มีขั้นตอนมากขึ้น</li>
+    <li><b>Retain:</b> ให้ broker เก็บข้อความล่าสุดของ topic ส่งให้ผู้สมัครรับใหม่ ตัวอย่าง retain เฉพาะ LED status ไม่
+      retain คำสั่ง control</li>
+    <li>Retained status อาจเป็นค่าเก่าขณะบอร์ด offline; ไม่ใช่หลักฐานว่าบอร์ดยังออนไลน์</li>
+    <li>Wildcard ใช้ตอน subscribe: <code>lab/#</code> รับทุกระดับใต้ lab; <code>lab/sensor/+</code> รับหนึ่งระดับใต้
+      sensor ไม่ใช้ wildcard ตอน publish</li>
+  </ul>
+  <h2>3. ESP32 ต่างจาก ESP8266 ตรงไหน</h2>
+  <table>
+    <tr>
+      <th>เรื่อง</th>
+      <th>ESP32</th>
+      <th>ESP8266</th>
+    </tr>
+    <tr>
+      <td>Wi-Fi header</td>
+      <td><code>#include &lt;WiFi.h&gt;</code></td>
+      <td><code>#include &lt;ESP8266WiFi.h&gt;</code></td>
+    </tr>
+    <tr>
+      <td>เลือกบอร์ดใน IDE</td>
+      <td>รุ่น ESP32 ที่ใช้จริง</td>
+      <td>เช่น NodeMCU 1.0 (ESP-12E Module)</td>
+    </tr>
+    <tr>
+      <td>ขา</td>
+      <td>อิงผังขา ESP32 รุ่นจริง</td>
+      <td>NodeMCU: D1=GPIO5, D2=GPIO4, D5=GPIO14</td>
+    </tr>
+    <tr>
+      <td>รหัสเฉพาะชิป</td>
+      <td>เช่น ESP.getEfuseMac()</td>
+      <td>ESP.getChipId()</td>
+    </tr>
+    <tr>
+      <td>MQTT / topics / React</td>
+      <td colspan="2">หลักการเดิม เว็บใช้โค้ดเดิมได้หาก broker, topics และ payload เหมือนเดิม</td>
+    </tr>
+  </table>
+  <p><b>เปลี่ยนแค่ header อาจไม่พอ:</b> ต้องปรับ GPIO, board target, ฟังก์ชันเฉพาะชิป และระดับเปิด/ปิด LED ให้ตรงวงจร
+    ESP8266 ใช้ Wi-Fi 2.4 GHz และอย่านำเลข D1 ไปเขียนเป็นเลข 1 เพราะ <code>1</code> หมายถึง GPIO1</p>
+  <h2>4. เตรียม ESP8266 และต่อวงจรตัวอย่าง</h2>
+  <ol>
+    <li>ติดตั้ง Arduino IDE และ ESP8266 board package หากยังไม่มี ใช้ Additional Boards Manager URL:
+      <code>https://arduino.esp8266.com/stable/package_esp8266com_index.json</code> แล้วติดตั้ง ESP8266 ใน Boards
+      Manager</li>
+    <li>เลือกบอร์ดและพอร์ต USB ให้ตรงฮาร์ดแวร์</li>
+    <li>ติดตั้ง <b>MQTT โดย Joel Gaehwiler</b>, <b>DHT sensor library โดย Adafruit</b> และ <b>Adafruit Unified
+        Sensor</b></li>
+    <li>เปิดไฟล์ <code>esp8266_iot_lab/esp8266_iot_lab.ino</code> แก้ Wi-Fi, MQTT host, username/password แล้วกด Verify
+      ก่อน Upload</li>
+    <li>เปิด Serial Monitor ที่ 115200 baud</li>
+  </ol>
+  <table>
+    <tr>
+      <th>อุปกรณ์ตัวอย่าง</th>
+      <th>ต่อกับ NodeMCU ESP8266</th>
+    </tr>
+    <tr>
+      <td>LED ภายนอก</td>
+      <td>D1 / GPIO5 → ตัวต้านทาน 330 Ω → ขา anode LED; cathode → GND</td>
+    </tr>
+    <tr>
+      <td>ปุ่ม</td>
+      <td>D5 / GPIO14 ↔ ปุ่ม ↔ GND ใช้ INPUT_PULLUP</td>
+    </tr>
+    <tr>
+      <td>DHT DATA</td>
+      <td>D2 / GPIO4</td>
+    </tr>
+    <tr>
+      <td>DHT VCC / GND</td>
+      <td>3.3V / GND สำหรับเซนเซอร์หรือโมดูลที่รองรับ 3.3V</td>
+    </tr>
+  </table>
+  <p>ตรวจป้าย VCC/DATA/GND ของโมดูลจริง ไม่เดาลำดับขาจากสีหรือรูปร่าง ถ้าเป็นเซนเซอร์เปล่าให้ต่อ pull-up DATA → 3.3V
+    ประมาณ 10 kΩ ตามคู่มือเซนเซอร์ โมดูลบางรุ่นมีมาแล้ว GPIO ESP8266 ใช้สัญญาณ 3.3V ไม่ป้อนสัญญาณ 5V เข้าขา</p>
+  <p>โค้ดกำหนด <code>DHTTYPE DHT11</code> ถ้าเป็น DHT22 ให้เปลี่ยนเป็น <code>DHT22</code> ถ้าเป็นเซนเซอร์อื่น เช่น SHT
+    ต้องเปลี่ยนไลบรารีและส่วนอ่านค่า ไม่ใช่เปลี่ยนชื่ออย่างเดียว ตัวอย่างนี้ไม่ใช้ LED บนบอร์ด ถ้าจะใช้ต้องตรวจขาและ
+    active-low ของบอร์ดก่อน</p>
+  <h2>5. อ่านโค้ด ESP ให้เข้าใจ</h2>
+  <table>
+    <tr>
+      <th>ส่วน</th>
+      <th>หน้าที่</th>
+    </tr>
+    <tr>
+      <td>setup()</td>
+      <td>เริ่ม Serial, ขา LED/ปุ่ม, เซนเซอร์, Wi-Fi และตั้ง MQTT callback</td>
+    </tr>
+    <tr>
+      <td>maintainConnections()</td>
+      <td>ต่อ Wi-Fi/MQTT ใหม่เมื่อหลุด และ subscribe control อีกครั้ง</td>
+    </tr>
+    <tr>
+      <td>mqtt.loop()</td>
+      <td>ดูแลรับข้อมูลและการเชื่อมต่อ ต้องเรียกบ่อย</td>
+    </tr>
+    <tr>
+      <td>messageHandler()</td>
+      <td>รับ ON/OFF แล้วเรียก setLed() ไม่ publish ภายใน callback</td>
+    </tr>
+    <tr>
+      <td>setLed()</td>
+      <td>เปลี่ยน GPIO, เก็บ ledOn และตั้งธง statusPending</td>
+    </tr>
+    <tr>
+      <td>readButton()</td>
+      <td>อ่านปุ่ม กรองสัญญาณเด้ง 40 ms และสลับ LED เฉพาะจังหวะกด</td>
+    </tr>
+    <tr>
+      <td>publishSensors()</td>
+      <td>อ่าน DHT ตรวจ NaN แล้วส่งค่าเมื่อ MQTT พร้อม</td>
+    </tr>
+  </table>
+  <p><b>INPUT_PULLUP:</b> ไม่กด=HIGH, กด=LOW • <b>Debounce:</b> รอค่าคงที่ก่อนยอมรับการกด • <b>!ledOn:</b> กลับสถานะ •
+    <b>statusPending:</b> บอกว่า loop ต้องส่งสถานะล่าสุด</p>
+  <pre>if (millis() - lastSensorAt &gt;= 5000UL) {
+  lastSensorAt = millis();
+  publishSensors();
+}</pre>
+  <p>ใช้เวลาชนิด unsigned long และการลบแบบนี้เพื่อรองรับ millis() วนกลับ โค้ดไม่หยุดรอ 5 วินาที จึงยังอ่านปุ่มและรับ
+    MQTT ระหว่างรอบได้ แต่การ connect เครือข่าย/TLS ในตัวอย่างยังเป็น synchronous
+    และอาจหยุดการอ่านปุ่มชั่วครู่เมื่อเครือข่ายมีปัญหา การส่งทุก 5 วินาทีเป็นช่วงเวลาโดยประมาณเมื่อระบบเชื่อมต่อปกติ
+    ไม่มีการเก็บข้อมูลย้อนหลังช่วง offline</p>
+  <h2>6. HiveMQ และ React</h2>
+  <p>HiveMQ Cloud ตามสไลด์: ESP ใช้ host + TLS port <b>8883</b>; browser ใช้ <b>wss://HOST:8884/mqtt</b> ตรวจค่าของ
+    cluster จริง Host ฝั่ง ESP ใส่เฉพาะชื่อโดเมน ไม่ใส่ https:// หรือ /mqtt</p>
+  <p>ใช้ MQTT credentials ที่อนุญาต publish/subscribe topics เหล่านี้ ไม่จำเป็นต้องเป็นรหัสเข้าเว็บไซต์ HiveMQ ตั้ง
+    Client ID เว็บไม่ซ้ำกับบอร์ด ตัวอย่างบอร์ดสร้าง ID จาก chip ID ให้แล้ว</p>
+  <p>ในโปรเจกต์ React ที่มี package.json: <code>npm install</code> แล้ว <code>npm install mqtt</code> สั่งเปิดตาม
+    scripts ใน package.json: CRA ใช้ <code>npm start</code>; โปรเจกต์ Vite โดยทั่วไปใช้ <code>npm run dev</code>
+    สไลด์ใช้ CRA ซึ่งเลิกแนะนำสำหรับโปรเจกต์ใหม่แล้ว หากสอบใช้โปรเจกต์เดิมให้ยึดของอาจารย์</p>
+  <table>
+    <tr>
+      <th>คำ/ไฟล์</th>
+      <th>หน้าที่</th>
+    </tr>
+    <tr>
+      <td>Node.js / npm</td>
+      <td>รัน JavaScript นอก browser / จัดการแพ็กเกจ</td>
+    </tr>
+    <tr>
+      <td>package.json</td>
+      <td>ข้อมูลโปรเจกต์ dependencies และ scripts</td>
+    </tr>
+    <tr>
+      <td>package-lock.json / node_modules</td>
+      <td>บันทึก dependency versions / โฟลเดอร์แพ็กเกจที่ติดตั้ง</td>
+    </tr>
+    <tr>
+      <td>useState</td>
+      <td>เก็บ temp, humidity, led และสถานะการเชื่อมต่อสำหรับแสดงผล</td>
+    </tr>
+    <tr>
+      <td>useEffect</td>
+      <td>สร้าง MQTT client, ลงทะเบียน events และคืน cleanup ปิด client</td>
+    </tr>
+    <tr>
+      <td>on('connect')</td>
+      <td>subscribe sensor/temp, sensor/humidity, led/status</td>
+    </tr>
+    <tr>
+      <td>on('message')</td>
+      <td>แปลง message.toString() แล้วเรียก setter ตาม topic</td>
+    </tr>
+    <tr>
+      <td>ปุ่มเว็บ</td>
+      <td>publish ON/OFF ไป led/control แบบ retain:false เมื่อเชื่อมต่อแล้ว</td>
+    </tr>
+  </table>
+  <pre>const [temp, setTemp] = useState('--');
+// ภายใน message handler:
+if (topic === 'lab/sensor/temp') setTemp(message.toString());
+// ภายใน JSX:
+&lt;p&gt;Temperature: {temp} °C&lt;/p&gt;</pre>
+  <p>เก็บ client ให้ปุ่มเข้าถึงได้ เช่น useRef; สร้าง client ใน effect และ cleanup client ตัวเดียวกัน
+    อย่าเชื่อมต่อใหม่ทุกครั้งที่ temp เปลี่ยน ปุ่มเว็บควร disabled ขณะยังไม่เชื่อมต่อ และปุ่ม toggle ควรรอรู้สถานะ LED
+    ก่อน</p>
+  <p>ตัวอย่างนี้ส่ง plain text แยก topic จึงไม่ต้อง JSON.parse ค่า ON/OFF หากโจทย์ให้ JSON รวม เช่น
+    <code>{"temp":28.5,"humidity":65}</code> ต้องเปลี่ยนทั้งผู้ส่งและผู้รับให้ตรงกัน และจัดการ JSON ที่อ่านไม่ได้</p>
+  <h2>7. ลำดับทำข้อสอบและตรวจงาน</h2>
+  <ol>
+    <li>LED + ปุ่มทำงานโดยไม่ใช้ network</li>
+    <li>เซนเซอร์อ่านได้ใน Serial</li>
+    <li>Wi-Fi ต่อได้และแสดง IP</li>
+    <li>MQTT ต่อได้และ subscribe สำเร็จ</li>
+    <li>ใช้ MQTT client ทดสอบรับ sensor ทุก 5 วินาที</li>
+    <li>ส่ง ON/OFF ผ่าน broker แล้ว LED จริงเปลี่ยน พร้อม status กลับ</li>
+    <li>React รับและแสดงค่าจริง</li>
+    <li>ทดสอบปุ่มเว็บ → LED → status และปุ่มจริง → LED → status</li>
+    <li>กดปุ่มค้างต้องไม่สลับรัว; รีเฟรชเว็บต้องรับ status ใหม่; ทดลอง reconnect เมื่อมีเวลา</li>
+  </ol>
+  <h2>8. แก้ปัญหาให้ตรงจุด</h2>
+  <table>
+    <tr>
+      <th>อาการ</th>
+      <th>ตรวจ</th>
+    </tr>
+    <tr>
+      <td>หา ESP8266WiFi.h ไม่เจอ</td>
+      <td>ติดตั้ง core และเลือก ESP8266 board ถูกหรือยัง</td>
+    </tr>
+    <tr>
+      <td>หา MQTTClient.h ไม่เจอ</td>
+      <td>ติดตั้ง MQTT ของ Joel Gaehwiler ไม่ใช่คนละไลบรารี</td>
+    </tr>
+    <tr>
+      <td>DHT read failed / NaN</td>
+      <td>รุ่นเซนเซอร์, DHTTYPE, ขา DATA, ไฟเลี้ยง, GND และ pull-up</td>
+    </tr>
+    <tr>
+      <td>Wi-Fi ติดแต่ MQTT ไม่ติด</td>
+      <td>Host/8883, TLS, MQTT credentials, อินเทอร์เน็ตและสิทธิ์</td>
+    </tr>
+    <tr>
+      <td>เว็บ/บอร์ดหลุดสลับกัน</td>
+      <td>Client ID ซ้ำ</td>
+    </tr>
+    <tr>
+      <td>ต่อได้แต่ไม่เห็นข้อมูล</td>
+      <td>Topic, slash, ตัวพิมพ์, subscribe และสิทธิ์</td>
+    </tr>
+    <tr>
+      <td>LED เปลี่ยนแต่เว็บไม่เปลี่ยน</td>
+      <td>ส่ง status และเว็บเรียก setLed หรือยัง</td>
+    </tr>
+    <tr>
+      <td>LED ทำงานกลับด้าน</td>
+      <td>ขาและ active-low ของวงจร; LED_ACTIVE_LOW ในโค้ด</td>
+    </tr>
+    <tr>
+      <td>กดหนึ่งครั้งเปลี่ยนหลายครั้ง</td>
+      <td>Debounce และ edge detection</td>
+    </tr>
+    <tr>
+      <td>เว็บ JSON parse error</td>
+      <td>ส่ง plain text แต่พยายาม parse เป็น JSON หรือไม่</td>
+    </tr>
+    <tr>
+      <td>npm บอกหา package.json ไม่พบ</td>
+      <td>เปิด terminal อยู่ถูกโฟลเดอร์โปรเจกต์หรือไม่</td>
+    </tr>
+  </table>
+  <h2>9. จุดในสไลด์ที่ควรแก้ความเข้าใจ</h2>
+  <ul>
+    <li>ตัวอย่างแต่ละบทใช้ topic ต่างกัน ต้องรวมให้ตรงตาม README</li>
+    <li>WiFi.status() คืนสถานะการเชื่อมต่อ ไม่ใช่จำนวนเครือข่าย; scanNetworks() ใช้สแกนเครือข่าย</li>
+    <li>JavaScript: var มี function scope ไม่ใช่ global เสมอ; for ปกติใช้ semicolon คั่น เช่น
+      <code>for (let i=0; i&lt;3; i++)</code></li>
+    <li>Bitwise NOT คือ <code>~</code>; logical NOT คือ <code>!</code>; npm remove คือถอนแพ็กเกจ</li>
+    <li>React render ได้จากหลายสาเหตุ เช่น state, parent render หรือ context ไม่ใช่เฉพาะ state ของตัวเองเท่านั้น</li>
+    <li>useEffect ไม่มี dependency array ทำงานหลังทุก commit; [] ใช้กับการตั้งค่าที่ไม่มี reactive dependency และ
+      StrictMode อาจทดสอบ setup/cleanup เพิ่มใน development</li>
+    <li>ตัวอย่าง TLS ใช้ setInsecure() ตามแนวแลบ: เข้ารหัสแต่ข้ามการยืนยันใบรับรองเซิร์ฟเวอร์ งานจริงควรตั้ง trusted CA;
+      รหัสในหน้าเว็บผู้ใช้มองเห็นได้ จึงใช้ credentials สำหรับแลบที่จำกัดสิทธิ์</li>
+  </ul>
+  <h2>10. คำถามทบทวนก่อนสอบ</h2>
+  <ol>
+    <li>ใคร subscribe led/control? <b>ESP</b></li>
+    <li>ใคร publish led/status? <b>ESP หลังสั่ง LED</b></li>
+    <li>ทำไมใช้ millis()? <b>ให้ loop ยังอ่านปุ่มและ MQTT ระหว่างรอรอบเซนเซอร์</b></li>
+    <li>กดปุ่มจริงแล้วเว็บเปลี่ยนได้อย่างไร? <b>ESP publish status → broker → เว็บ setState</b></li>
+    <li>เว็บต้องเปลี่ยนไหมเมื่อเปลี่ยน ESP32 เป็น ESP8266? <b>ไม่ต้อง ถ้า broker/topics/payload เหมือนกัน</b></li>
+    <li>ยังไม่รู้รุ่นเซนเซอร์ เขียนส่วนไหนได้ก่อน? <b>Wi-Fi, MQTT, LED, ปุ่ม และ React; ส่วนอ่าน sensor
+        ต้องเลือกรุ่นให้ถูก</b></li>
+  </ol>
+  <h2>แหล่งอ้างอิง</h2>
+  <p>เอกสารรายวิชา: README.txt; 8.wifi and mqtt.pdf (24 หน้า); 9.node.js npm mqtt.pdf (35 หน้า); 11.1 front-end React
+    MQTT.pdf (28 หน้า) ใน F:\Shiro\workrmutp\IOT\LAB อ่านครบแล้ว
+    การต่อวงจรและโค้ดรวมในฉบับนี้เป็นตัวอย่างที่เพิ่มเพื่อฝึก ไม่ใช่ข้อกำหนดขาต่อจาก README</p>
+  <ul>
+    <li><a href="https://arduino-esp8266.readthedocs.io/en/latest/reference.html">ESP8266 Arduino Core: GPIO และ
+        timing</a></li>
+    <li><a href="https://arduino-esp8266.readthedocs.io/en/latest/installing.html">ติดตั้ง ESP8266 core</a></li>
+    <li><a href="https://github.com/256dpi/arduino-mqtt">MQTT โดย Joel Gaehwiler</a></li>
+    <li><a href="https://github.com/adafruit/DHT-sensor-library">Adafruit DHT library</a></li>
+    <li><a href="https://docs.hivemq.com/hivemq-cloud/quick-start-guide.html">HiveMQ Cloud</a></li>
+    <li><a href="https://github.com/mqttjs/MQTT.js">MQTT.js</a></li>
+    <li><a href="https://react.dev/reference/react/useEffect">React useEffect</a> · <a
+        href="https://react.dev/blog/2025/02/14/sunsetting-create-react-app">สถานะ Create React App</a></li>
+  </ul>
+  <h2 class="newpage">ภาคผนวก: โค้ด ESP8266</h2>
+  <p>เปิดไฟล์ .ino ที่แนบแยกใน Arduino IDE ได้โดยตรง โค้ดนี้ใช้วงจรในข้อ 4 และ DHT11 เป็นสมมติฐาน ต้องแก้ค่าขึ้นต้น
+    YOUR_ ก่อนใช้งาน</p>
+  <pre>/* IoT lab example: NodeMCU ESP8266 + DHT11 + external LED + button.
+   Install MQTT by Joel Gaehwiler, DHT sensor library by Adafruit,
+   and Adafruit Unified Sensor. Select the actual ESP8266 board.
+   Set credentials below. This sketch has NOT been hardware-tested.
+   D1=GPIO5 LED (active HIGH), D2=GPIO4 DHT DATA, D5=GPIO14 button.
+   If the actual sensor is DHT22, change DHTTYPE. Other sensors need
+   their own library and read code. All IO signals must be 3.3V.
+*/
+#include &lt;ESP8266WiFi.h&gt;
+#include &lt;WiFiClientSecure.h&gt;
+#include &lt;MQTTClient.h&gt;
+#include &lt;DHT.h&gt;
+
+const char* WIFI_SSID = &quot;YOUR_WIFI_SSID&quot;;
+const char* WIFI_PASSWORD = &quot;YOUR_WIFI_PASSWORD&quot;;
+const char* MQTT_HOST = &quot;YOUR_CLUSTER.s1.eu.hivemq.cloud&quot;;
+const int MQTT_PORT = 8883;
+const char* MQTT_USERNAME = &quot;YOUR_MQTT_USERNAME&quot;;
+const char* MQTT_PASSWORD = &quot;YOUR_MQTT_PASSWORD&quot;;
+
+// Use the same topics in React. Add your student ID if sharing a broker.
+const char* TOPIC_TEMP = &quot;lab/sensor/temp&quot;;
+const char* TOPIC_HUMIDITY = &quot;lab/sensor/humidity&quot;;
+const char* TOPIC_STATUS = &quot;lab/led/status&quot;;
+const char* TOPIC_CONTROL = &quot;lab/led/control&quot;;
+
+const uint8_t LED_PIN = 5;      // NodeMCU D1 (external LED)
+const uint8_t DHT_PIN = 4;      // NodeMCU D2
+const uint8_t BUTTON_PIN = 14;  // NodeMCU D5, button to GND
+const bool LED_ACTIVE_LOW = false;
+#define DHTTYPE DHT11
+
+WiFiClientSecure networkClient;
+MQTTClient mqtt(256);
+DHT dht(DHT_PIN, DHTTYPE);
+String clientId;
+bool ledOn = false;
+bool statusPending = true;
+bool previousRawButton = HIGH;
+bool stableButton = HIGH;
+bool wifiWasConnected = false;
+unsigned long buttonChangedAt = 0;
+unsigned long lastSensorAt = 0;
+unsigned long lastWifiAttemptAt = 0;
+unsigned long lastMqttAttemptAt = 0;
+const unsigned long SENSOR_INTERVAL = 5000;
+const unsigned long DEBOUNCE_MS = 40;
+
+void setLed(bool on) {
+  ledOn = on;
+  digitalWrite(LED_PIN, (on != LED_ACTIVE_LOW) ? HIGH : LOW);
+  statusPending = true;
+  Serial.print(&quot;LED: &quot;);
+  Serial.println(on ? &quot;ON&quot; : &quot;OFF&quot;);
+}
+
+void messageHandler(String &amp;topic, String &amp;payload) {
+  Serial.println(topic + &quot; -&gt; &quot; + payload);
+  if (topic != TOPIC_CONTROL) return;
+  if (payload == &quot;ON&quot;) setLed(true);
+  else if (payload == &quot;OFF&quot;) setLed(false);
+  // Publish later in loop(), not inside this callback.
+}
+
+void readButton() {
+  bool raw = digitalRead(BUTTON_PIN);
+  unsigned long now = millis();
+  if (raw != previousRawButton) {
+    previousRawButton = raw;
+    buttonChangedAt = now;
+  }
+  if (now - buttonChangedAt &gt;= DEBOUNCE_MS &amp;&amp; raw != stableButton) {
+    stableButton = raw;
+    if (stableButton == LOW) setLed(!ledOn);
+  }
+}
+
+void maintainConnections() {
+  unsigned long now = millis();
+  if (WiFi.status() != WL_CONNECTED) {
+    if (wifiWasConnected) {
+      wifiWasConnected = false;
+      networkClient.stop();
+      Serial.println(&quot;Wi-Fi lost&quot;);
+    }
+    if (now - lastWifiAttemptAt &gt;= 10000UL) {
+      lastWifiAttemptAt = now;
+      WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+      Serial.println(&quot;Retrying Wi-Fi...&quot;);
+    }
+    return;
+  }
+  if (!wifiWasConnected) {
+    wifiWasConnected = true;
+    Serial.print(&quot;Wi-Fi IP: &quot;);
+    Serial.println(WiFi.localIP());
+    lastMqttAttemptAt = now - 5000UL;
+  }
+  if (mqtt.connected() || now - lastMqttAttemptAt &lt; 5000UL) return;
+  lastMqttAttemptAt = now;
+  Serial.println(&quot;Connecting MQTT...&quot;);
+  // connect() is synchronous: an individual connection attempt may pause
+  // button polling. The retry interval avoids an endless retry while-loop.
+  if (mqtt.connect(clientId.c_str(), MQTT_USERNAME, MQTT_PASSWORD)) {
+    if (!mqtt.subscribe(TOPIC_CONTROL)) {
+      Serial.println(&quot;Subscribe failed; check permissions&quot;);
+      mqtt.disconnect();
+      return;
+    }
+    statusPending = true;
+    Serial.println(&quot;MQTT connected, control subscribed&quot;);
+  } else {
+    Serial.print(&quot;MQTT failed, error: &quot;);
+    Serial.println(mqtt.lastError());
+  }
+}
+
+void publishSensors() {
+  float humidity = dht.readHumidity();
+  float temperature = dht.readTemperature();
+  if (isnan(humidity) || isnan(temperature)) {
+    Serial.println(&quot;DHT read failed: check type, DATA pin and wiring&quot;);
+    return;
+  }
+  Serial.print(&quot;Temperature C: &quot;); Serial.print(temperature);
+  Serial.print(&quot; | Humidity %: &quot;); Serial.println(humidity);
+  if (mqtt.connected()) {
+    bool tempSent = mqtt.publish(TOPIC_TEMP, String(temperature, 1));
+    bool humiditySent = mqtt.publish(TOPIC_HUMIDITY, String(humidity, 1));
+    if (!tempSent || !humiditySent) Serial.println(&quot;Sensor publish failed&quot;);
+  }
+}
+
+void setup() {
+  Serial.begin(115200);
+  digitalWrite(LED_PIN, LED_ACTIVE_LOW ? HIGH : LOW);
+  pinMode(LED_PIN, OUTPUT);
+  pinMode(BUTTON_PIN, INPUT_PULLUP);
+  previousRawButton = stableButton = digitalRead(BUTTON_PIN);
+  dht.begin();
+  setLed(false);
+  clientId = &quot;esp8266_&quot; + String(ESP.getChipId(), HEX);
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  lastWifiAttemptAt = millis();
+  // Classroom shortcut matching the slides: encrypted transport but no
+  // server certificate authentication. For production use a trusted CA.
+  networkClient.setInsecure();
+  mqtt.begin(MQTT_HOST, MQTT_PORT, networkClient);
+  mqtt.onMessage(messageHandler);
+}
+
+void loop() {
+  readButton();
+  maintainConnections();
+  if (mqtt.connected()) mqtt.loop();
+  readButton();
+  if (mqtt.connected() &amp;&amp; statusPending) {
+    if (mqtt.publish(TOPIC_STATUS, ledOn ? &quot;ON&quot; : &quot;OFF&quot;, true, 0)) {
+      statusPending = false;
+    }
+  }
+  unsigned long now = millis();
+  if (now - lastSensorAt &gt;= SENSOR_INTERVAL) {
+    lastSensorAt = now;
+    publishSensors();
+  }
+  delay(10); // Briefly yield; do not use delay(5000) for sensor timing.
+}
+</pre>
+</main>
+
+</html>

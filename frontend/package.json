@@ -1,6 +1,23 @@
 {
-  "name": "iot-lab-dashboard", "version": "1.0.0", "private": true, "type": "module",
-  "scripts": { "dev": "vite --host 127.0.0.1", "start": "vite --host 127.0.0.1", "build": "vite build", "preview": "vite preview --host 127.0.0.1", "test": "node --test src/protocol.test.js" },
-  "dependencies": { "react": "^19.0.0", "react-dom": "^19.0.0", "mqtt": "^5.0.0" },
-  "devDependencies": { "vite": "^7.0.0" }
+  "name": "iot-lab-dashboard",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "start": "vite --host 127.0.0.1",
+    "build": "node scripts/build.mjs",
+    "preview": "vite preview --host 127.0.0.1",
+    "test": "node --test --test-isolation=none src/protocol.test.js",
+    "build:vite": "vite build"
+  },
+  "dependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "mqtt": "^5.0.0"
+  },
+  "devDependencies": {
+    "vite": "^7.0.0",
+    "esbuild": "0.28.2"
+  }
 }
